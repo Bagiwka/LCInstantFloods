@@ -9,18 +9,22 @@ namespace LCInstantFloods.Patches
     {
         private static FieldInfo floodLevelOffsetField = typeof(FloodWeather).GetField("floodLevelOffset", BindingFlags.NonPublic | BindingFlags.Instance);
 
-        [HarmonyPatch("OnGlobalTimeSync")]
-        [HarmonyPrefix]
-        static void Prefix(FloodWeather __instance)
+        [HarmonyPatch("Update")]
+        private static void Postfix(FloodWeather __instance)
         {
             // Access floodLevelOffset using reflection
-            float currentFloodLevelOffset = (float)floodLevelOffsetField.GetValue(__instance);
+            float floodLevelOffset = (float)floodLevelOffsetField.GetValue(__instance);
 
-            // Modify floodLevelOffset with a multiplier to make it change faster
-            float multiplier = 10.0f; // Adjust this multiplier as needed
-            float modifiedFloodLevelOffset = Mathf.Clamp(TimeOfDay.Instance.globalTime / 1f, 0f, 100f) * multiplier * (float)TimeOfDay.Instance.currentWeatherVariable2;
+            // Increase the rate at which floodLevelOffset changes
+            float rateMultiplier = 2.0f; // Adjust this multiplier as needed
+            float modifiedFloodLevelOffset = floodLevelOffset + (rateMultiplier * Time.deltaTime);
 
+            // Set the modified floodLevelOffset
             floodLevelOffsetField.SetValue(__instance, modifiedFloodLevelOffset);
+
+            // Modify the position using the updated floodLevelOffset
+            Vector3 newPosition = new Vector3(0f, TimeOfDay.Instance.currentWeatherVariable, 0f) + Vector3.up * modifiedFloodLevelOffset;
+            __instance.gameObject.transform.position = Vector3.MoveTowards(__instance.gameObject.transform.position, newPosition, 0.5f * Time.deltaTime);
         }
     }
 }
